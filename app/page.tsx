@@ -164,7 +164,7 @@ export default function Home() {
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="ambient-bloom absolute -top-40 left-1/2 h-[820px] w-[1400px] -translate-x-1/2" />
         <div className="aurora aurora-a -left-40 top-24 h-[460px] w-[460px] bg-[#6d5ef8]" />
-        <div className="aurora aurora-b -right-40 top-[40vh] h-[520px] w-[520px] bg-[#35d6e8] opacity-25" />
+        <div className="aurora aurora-b -right-40 top-[40vh] h-[520px] w-[520px] bg-[#35d6e8] opacity-15" />
         <div className="ambient-grid absolute inset-0" />
       </div>
       <PointerGlow />

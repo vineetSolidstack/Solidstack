@@ -17,7 +17,12 @@ function NativeSelect({
   return (
     <div className="relative">
       <select
-        className={cn(fieldClass, "appearance-none pr-10", className)}
+        className={cn(
+          fieldClass,
+          // Dark menu: without this, some browsers draw a white list with pale text.
+          "appearance-none pr-10 [color-scheme:dark] [&>option]:bg-surface [&>option]:text-ink [&>option:disabled]:text-ink-3",
+          className,
+        )}
         {...props}
       >
         {children}
