@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #08080b;
+  --elevated: #0d0d12;
+  --surface: #121218;
+  --ink: #f4f4f7;
+  --ink-2: #c3c3ce;
+  --ink-3: #8a8a99;
+  /* Lightened from #5a5a69 so small text passes WCAG AA on the canvas. */
+  --ink-4: #7f7f8e;
+  --line: #ffffff13;
+  --line-2: #ffffff21;
+  --accent: #6d5ef8;
+  --accent-lo: #8f84ff;
+  --accent-hi: #4b3ae8;
+  --secondary-accent: #35d6e8;
+  --glow: #6d5ef873;
+  --danger: #ff7a85;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1.5rem;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-elevated: var(--elevated);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-lo: var(--accent-lo);
+  --color-accent-hi: var(--accent-hi);
+  --color-secondary-accent: var(--secondary-accent);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--ink);
+  letter-spacing: -0.011em;
+  font-size: 1rem;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-lo);
+  outline-offset: 3px;
+}
+
+.container-page {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.section-y {
+  padding-top: clamp(72px, 11vw, 148px);
+  padding-bottom: clamp(72px, 11vw, 148px);
+}
+
+.ambient-bloom {
+  filter: blur(20px);
+  background: radial-gradient(circle at 50% 0, #6d5ef833 0%, #0000 72%);
+}
+
+.ambient-grid {
+  background-image:
+    linear-gradient(90deg, #ffffff13 1px, #0000 1px),
+    linear-gradient(#ffffff13 1px, #0000 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(90% 55% at 50% 0, #000, #0000 75%);
+  mask-image: radial-gradient(90% 55% at 50% 0, #000, #0000 75%);
+}
+
+.btn-primary-grad {
+  /* Slightly deeper than the original gradient so white text passes AA. */
+  background-image: linear-gradient(180deg, var(--accent), var(--accent-hi));
+  box-shadow:
+    inset 0 1px 0 #ffffff47,
+    0 8px 26px -8px var(--glow);
+  transition:
+    transform 0.42s var(--ease),
+    box-shadow 0.42s var(--ease);
+}
+
+.btn-primary-grad:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px #ffffff47,
+    0 14px 40px -6px #6d5ef8bf;
+}
+
+.card-lit {
+  background-image: linear-gradient(#ffffff0b, #fff0);
+  background-color: var(--elevated);
+}
+
+.text-gradient-accent {
+  background-image: linear-gradient(
+    100deg,
+    #fff 0%,
+    var(--accent-lo) 52%,
+    var(--secondary-accent) 100%
+  );
+  color: #0000;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Scroll reveal. Content stays visible without JS or with reduced motion. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 850ms var(--ease),
+    transform 850ms var(--ease);
+}
+
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.accordion-content[data-state="open"] {
+  animation: accordion-down 0.35s var(--ease);
+}
+
+.accordion-content[data-state="closed"] {
+  animation: accordion-up 0.35s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .btn-primary-grad,
+  .accordion-content {
+    transition: none;
+    animation: none !important;
+  }
+
+  .btn-primary-grad:hover {
+    transform: none;
+  }
+}
