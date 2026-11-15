@@ -200,3 +200,268 @@ body {
     transform: none;
   }
 }
+
+/* Demo sites */
+@keyframes demo-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes demo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.demo-marquee {
+  animation: demo-marquee 38s linear infinite;
+}
+
+.demo-spin {
+  animation: demo-spin 22s linear infinite;
+}
+
+.demo-hazard {
+  background-image: repeating-linear-gradient(-45deg, var(--d-accent) 0 14px, #0c0d0e 14px 28px);
+}
+
+.demo-gridlines {
+  background-image:
+    linear-gradient(90deg, #ffffff0a 1px, transparent 1px),
+    linear-gradient(#ffffff0a 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-marquee,
+  .demo-spin {
+    animation: none;
+  }
+}
+
+/* Landing page motion */
+@property --spin {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes word-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em) rotate(3deg);
+    filter: blur(8px);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes aurora-a {
+  50% {
+    transform: translate(14vw, 8vh) scale(1.25);
+  }
+}
+
+@keyframes aurora-b {
+  50% {
+    transform: translate(-12vw, -6vh) scale(0.85);
+  }
+}
+
+@keyframes shine {
+  0%,
+  70% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+
+@keyframes ring {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20%,
+  60% {
+    transform: rotate(-16deg);
+  }
+  40%,
+  80% {
+    transform: rotate(16deg);
+  }
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes border-spin {
+  to {
+    --spin: 360deg;
+  }
+}
+
+@keyframes float-y {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.word-rise {
+  animation: word-rise 0.9s var(--ease) both;
+}
+
+.fade-up {
+  animation: fade-up 0.9s var(--ease) both;
+}
+
+.aurora {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+}
+
+.aurora-a {
+  animation: aurora-a 22s ease-in-out infinite;
+}
+
+.aurora-b {
+  animation: aurora-b 26s ease-in-out infinite;
+}
+
+/* Light sweeping across primary buttons */
+.btn-primary-grad {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary-grad::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, #ffffff40, transparent);
+  animation: shine 5s var(--ease) infinite;
+  pointer-events: none;
+}
+
+.sb-ring,
+.ring-wiggle {
+  animation: ring 0.9s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+
+.sb-caret {
+  animation: caret 0.8s steps(1) infinite;
+}
+
+.sb-pop {
+  animation: pop 0.5s var(--ease);
+}
+
+.float-y {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+/* Spotlight that follows the pointer inside a tilted card */
+.tilt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), #8f84ff30, transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.tilt:hover::after {
+  opacity: 1;
+}
+
+/* Rotating light around the featured price card */
+.spin-border {
+  position: relative;
+  border-radius: var(--radius-card);
+}
+
+.spin-border::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--spin), transparent 0 55%, var(--accent-lo), var(--secondary-accent), transparent 100%);
+  animation: border-spin 5s linear infinite;
+  z-index: 0;
+}
+
+/* Line that draws itself across the three steps */
+.draw-line {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.6s var(--ease) 0.2s;
+}
+
+.reveal.is-visible .draw-line {
+  transform: scaleX(1);
+}
+
+.js .reveal .stagger {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.8s var(--ease),
+    transform 0.8s var(--ease);
+}
+
+.js .reveal.is-visible .stagger {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word-rise,
+  .fade-up,
+  .aurora-a,
+  .aurora-b,
+  .btn-primary-grad::after,
+  .sb-ring,
+  .ring-wiggle,
+  .sb-caret,
+  .sb-pop,
+  .float-y,
+  .spin-border::before {
+    animation: none !important;
+  }
+
+  .draw-line,
+  .js .reveal .stagger {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+}

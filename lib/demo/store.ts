@@ -7,7 +7,7 @@ import { getTemplate, type DemoState } from "./data";
  * Demo settings live in the visitor's own browser (localStorage), so every
  * visitor gets a private sandbox and the demo needs no database.
  */
-const key = (slug: string) => `solidstack-demo-v2:${slug}`;
+const key = (slug: string) => `solidstack-demo-v4:${slug}`;
 const listeners = new Set<() => void>();
 const defaults = new Map<string, DemoState>();
 const cache = new Map<string, { raw: string; state: DemoState }>();

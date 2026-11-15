@@ -175,6 +175,42 @@ export function DemoAdmin({ slug }: { slug: string }) {
           <AddButton onClick={() => set({ services: [...config.services, { id: newId(new Date()), name: "New service", minutes: 30, price: 50 }] })}>Add a service</AddButton>
         </Card>
 
+        {config.staff.length ? (
+          <Card title="Team" hint="Customers can pick a stylist online or ask for one by name on the phone. Untick the days each person works to mark them off.">
+            {config.staff.map((p) => {
+              const patch = (v: Partial<typeof p>) => set({ staff: config.staff.map((x) => (x.id === p.id ? { ...x, ...v } : x)) });
+              return (
+                <div key={p.id} className="flex flex-col gap-3 border-b border-line pb-5 last:border-b-0 last:pb-0">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex min-w-[8rem] flex-1 flex-col gap-2">
+                      <Label htmlFor={`tn-${p.id}`}>Name</Label>
+                      <Input id={`tn-${p.id}`} value={p.name} onChange={(e) => patch({ name: e.target.value })} />
+                    </div>
+                    <div className="flex min-w-[8rem] flex-1 flex-col gap-2">
+                      <Label htmlFor={`tr-${p.id}`}>Role</Label>
+                      <Input id={`tr-${p.id}`} value={p.role} onChange={(e) => patch({ role: e.target.value })} />
+                    </div>
+                    <RemoveButton label={`Remove ${p.name}`} onClick={() => set({ staff: config.staff.filter((x) => x.id !== p.id) })} />
+                  </div>
+                  <div role="group" aria-label={`Days ${p.name} works`} className="flex flex-wrap gap-x-4 gap-y-2">
+                    {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                      <span key={d} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`td-${p.id}-${d}`}
+                          checked={!p.daysOff.includes(d)}
+                          onCheckedChange={(v) => patch({ daysOff: v === true ? p.daysOff.filter((x) => x !== d) : [...p.daysOff, d] })}
+                        />
+                        <label htmlFor={`td-${p.id}-${d}`} className="text-[0.88rem] text-ink-2">{DAYS[d].slice(0, 3)}</label>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <AddButton onClick={() => set({ staff: [...config.staff, { id: newId(new Date()), name: "New stylist", role: "Stylist", services: [], daysOff: [] }] })}>Add a team member</AddButton>
+          </Card>
+        ) : null}
+
         <Card title="Extra answers" hint="Teach it answers to common questions. If a caller asks something that isn't here, it never guesses: it takes a message for you instead.">
           {config.faqs.map((f) => {
             const patch = (p: Partial<typeof f>) => set({ faqs: config.faqs.map((x) => (x.id === f.id ? { ...x, ...p } : x)) });
@@ -224,7 +260,7 @@ export function DemoAdmin({ slug }: { slug: string }) {
               {[...bookings].sort((a, b) => (a.day + a.min).localeCompare(b.day + b.min)).map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3">
                   <span className="text-[0.95rem] text-ink-2">
-                    <strong className="text-ink">{b.name}</strong> · {b.serviceName} · {niceDate(b.day)} at {fmtTime(b.min)}
+                    <strong className="text-ink">{b.name}</strong> · {b.serviceName}{b.staffName ? ` with ${b.staffName}` : ""} · {niceDate(b.day)} at {fmtTime(b.min)}{b.note ? ` · “${b.note}”` : ""}
                   </span>
                   <Button type="button" variant="outline" size="sm" onClick={() => cancelBooking(b.id)}>Cancel</Button>
                 </li>

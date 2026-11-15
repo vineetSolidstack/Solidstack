@@ -1,9 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  CalendarCheck,
   Check,
-  MessageSquareText,
   MonitorX,
   MoonStar,
   Phone,
@@ -26,7 +25,9 @@ import {
   Placeholder,
   SectionHeading,
 } from "@/components/site/primitives";
+import { CountUp, PointerGlow, ScrollProgress, Tilt, Words } from "@/components/site/motion";
 import { Reveal } from "@/components/site/reveal";
+import { SiteBuilder } from "@/components/site/site-builder";
 import { templates } from "@/lib/demo/data";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -162,8 +163,12 @@ export default function Home() {
 
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="ambient-bloom absolute -top-40 left-1/2 h-[820px] w-[1400px] -translate-x-1/2" />
+        <div className="aurora aurora-a -left-40 top-24 h-[460px] w-[460px] bg-[#6d5ef8]" />
+        <div className="aurora aurora-b -right-40 top-[40vh] h-[520px] w-[520px] bg-[#35d6e8] opacity-25" />
         <div className="ambient-grid absolute inset-0" />
       </div>
+      <PointerGlow />
+      <ScrollProgress />
 
       <Header />
 
@@ -175,14 +180,16 @@ export default function Home() {
               className="mx-auto max-w-[14ch] text-balance"
               style={{ fontSize: "clamp(2.6rem, 6.4vw, 4.9rem)" }}
             >
-              <span className="text-ink">Never miss a booking</span>{" "}
-              <span className="text-gradient-accent font-serif font-normal italic">again.</span>
+              <Words text="Never miss a booking" className="text-ink" />
+              <span className="word-rise text-gradient-accent inline-block font-serif font-normal italic" style={{ animationDelay: "420ms" }}>
+                again.
+              </span>
             </h1>
-            <p className="mx-auto mt-6 max-w-[52ch] text-pretty text-[1.0625rem] leading-relaxed text-ink-2">
+            <p className="fade-up mx-auto mt-6 max-w-[52ch] text-pretty text-[1.0625rem] leading-relaxed text-ink-2" style={{ animationDelay: "560ms" }}>
               A website and an AI receptionist for salons, med spas and auto
               shops, live in 7 days.
             </p>
-            <div className="mt-9 flex w-full flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="fade-up mt-9 flex w-full flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "700ms" }}>
               <Button asChild className="w-full max-w-xs sm:w-auto sm:max-w-none">
                 <a href="#audit">
                   {AUDIT_CTA}
@@ -194,11 +201,27 @@ export default function Home() {
               </Button>
             </div>
 
-            <Reveal className="mt-16 w-full lg:mt-20">
-              <HeroFlow />
-            </Reveal>
+            <div className="fade-up mt-16 w-full lg:mt-20" style={{ animationDelay: "850ms" }}>
+              <SiteBuilder />
+            </div>
           </div>
         </section>
+
+        {/* Who it's for, drifting past */}
+        <div aria-hidden="true" className="overflow-hidden border-t border-line py-4">
+          <div className="demo-marquee flex w-max">
+            {[0, 1].map((n) => (
+              <div key={n} className="flex shrink-0 items-center">
+                {["Salons", "Med spas", "Dentists", "Auto shops", "HVAC", "Plumbers", "Barbershops"].map((w) => (
+                  <span key={w} className="flex items-center whitespace-nowrap font-serif text-[1.5rem] italic text-ink-3">
+                    {w}
+                    <span className="mx-6 font-sans text-[0.8rem] not-italic text-accent-lo">✦</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* 3. Problem strip */}
         <section aria-labelledby="problem-title" className="border-y border-line bg-white/[0.012]">
@@ -219,7 +242,7 @@ export default function Home() {
                       "linear-gradient(140deg, rgba(109,94,248,0.22), rgba(53,214,232,0.14))",
                   }}
                 >
-                  <p.icon className="h-5 w-5" />
+                  <p.icon className={cn("h-5 w-5", p.icon === PhoneMissed && "ring-wiggle")} />
                 </span>
                 <div>
                   <h3 className="text-[1.0625rem] leading-snug tracking-[-0.02em] text-ink">{p.title}</h3>
@@ -242,11 +265,13 @@ export default function Home() {
               />
             </Reveal>
             <Reveal className="mt-14">
-              <ol className="card-lit grid overflow-hidden rounded-[var(--radius-card)] border border-line min-[900px]:grid-cols-3">
+              <ol className="card-lit relative grid overflow-hidden rounded-[var(--radius-card)] border border-line min-[900px]:grid-cols-3">
+                <li aria-hidden="true" className="draw-line absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-accent via-accent-lo to-secondary-accent" />
                 {steps.map((s, i) => (
                   <li
                     key={s.title}
-                    className="flex flex-col border-line p-7 max-[899px]:border-b max-[899px]:last:border-b-0 min-[900px]:border-r min-[900px]:last:border-r-0"
+                    style={{ transitionDelay: `${200 + i * 260}ms` }}
+                    className="stagger flex flex-col border-line p-7 max-[899px]:border-b max-[899px]:last:border-b-0 min-[900px]:border-r min-[900px]:last:border-r-0"
                   >
                     <span aria-hidden="true" className="font-serif text-[3.25rem] italic leading-none text-white/[0.13]">
                       0{i + 1}
@@ -278,17 +303,22 @@ export default function Home() {
             <ul className="mt-14 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(288px,100%),1fr))]">
               {templates.map((t, i) => (
                 <li key={t.slug}>
-                  <Reveal delay={i * 70} className="h-full">
-                    <div className="card-lit flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line">
-                      <div
-                        aria-hidden="true"
-                        className="flex h-36 flex-col justify-end p-5"
-                        style={{ backgroundColor: t.theme.bg, color: t.theme.fg }}
-                      >
-                        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em]" style={{ color: t.theme.accent }}>
+                  <Reveal delay={i * 110} className="h-full">
+                    <Tilt>
+                    <div className="group card-lit flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line transition-colors duration-500 hover:border-accent-lo/50">
+                      <div aria-hidden="true" className="relative flex h-48 flex-col justify-end overflow-hidden p-5 text-white">
+                        <Image
+                          src={`/demo/${t.slug}/hero.jpg`}
+                          alt=""
+                          fill
+                          sizes="(min-width: 900px) 380px, 100vw"
+                          className="object-cover transition-transform duration-[1200ms] ease-[var(--ease)] group-hover:scale-110"
+                        />
+                        <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                        <span className="relative text-[0.7rem] font-semibold uppercase tracking-[0.16em]" style={{ color: t.theme.scheme === "dark" ? t.theme.accent : "#fff" }}>
                           {t.tagline}
                         </span>
-                        <span className={cn("mt-1 text-[1.5rem] leading-tight", t.theme.heading)}>{t.config.name}</span>
+                        <span className={cn("relative mt-1 text-[1.6rem] leading-tight", t.theme.heading)}>{t.config.name}</span>
                       </div>
                       <div className="flex flex-1 flex-col p-6">
                         <h3 className="text-[1.0625rem] text-ink">{t.kind}</h3>
@@ -303,6 +333,7 @@ export default function Home() {
                         </Button>
                       </div>
                     </div>
+                    </Tilt>
                   </Reveal>
                 </li>
               ))}
@@ -346,10 +377,11 @@ export default function Home() {
             </Reveal>
             <div className="mt-16 grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(288px,100%),1fr))]">
               {plans.map((plan, i) => (
-                <Reveal key={plan.name} delay={i * 70} className="h-full">
+                <Reveal key={plan.name} delay={i * 110} className="h-full">
+                  <Tilt max={4} className={cn(plan.popular && "spin-border")}>
                   <div
                     className={cn(
-                      "relative flex h-full flex-col rounded-[var(--radius-card)] border p-7",
+                      "relative z-[1] flex h-full flex-col rounded-[var(--radius-card)] border p-7",
                       plan.popular
                         ? "border-accent-lo/40 shadow-[0_30px_80px_-30px_rgba(109,94,248,0.55)]"
                         : "card-lit border-line",
@@ -378,7 +410,7 @@ export default function Home() {
                         className="font-semibold tracking-[-0.04em] text-ink"
                         style={{ fontSize: "clamp(2.1rem, 3.4vw, 2.7rem)", lineHeight: 1 }}
                       >
-                        {plan.price}
+                        <CountUp value={Number(plan.price.replace("$", ""))} prefix="$" />
                       </span>
                       <span className="text-[0.875rem] text-ink-3">per month</span>
                     </p>
@@ -399,6 +431,7 @@ export default function Home() {
                       </a>
                     </Button>
                   </div>
+                  </Tilt>
                 </Reveal>
               ))}
             </div>
@@ -531,60 +564,5 @@ export default function Home() {
         </div>
       </footer>
     </>
-  );
-}
-
-/** Illustration of the product flow. Generic example, not a customer record. */
-function HeroFlow() {
-  const items = [
-    {
-      icon: PhoneMissed,
-      tone: "text-rose-300",
-      label: "Missed call",
-      text: "A customer calls while you're with a client.",
-    },
-    {
-      icon: MessageSquareText,
-      tone: "text-accent-lo",
-      label: "Instant text back",
-      text: "“Sorry we missed you! Want to book a time? Reply here.”",
-    },
-    {
-      icon: CalendarCheck,
-      tone: "text-emerald-300",
-      label: "Appointment booked",
-      text: "The booking lands in your calendar. No phone tag.",
-    },
-  ];
-  return (
-    <figure className="relative mx-auto max-w-[920px]">
-      <div
-        aria-hidden="true"
-        className="absolute -inset-x-10 -bottom-16 top-16 -z-10 rounded-full opacity-70 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 60% at 50% 60%, rgba(109,94,248,0.42), transparent 70%)",
-        }}
-      />
-      <ol className="grid overflow-hidden rounded-[var(--radius-card)] border border-line-2 bg-elevated text-left shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)] min-[760px]:grid-cols-3">
-        {items.map((it) => (
-          <li
-            key={it.label}
-            className="flex gap-4 border-line p-6 max-[759px]:border-b max-[759px]:last:border-b-0 min-[760px]:flex-col min-[760px]:border-r min-[760px]:last:border-r-0"
-          >
-            <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line-2 bg-white/[0.03]", it.tone)}>
-              <it.icon aria-hidden="true" className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3">{it.label}</p>
-              <p className="mt-2 text-[0.95rem] leading-snug text-ink-2">{it.text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <figcaption className="mt-4 text-[0.8125rem] text-ink-3">
-        Example of how a missed call becomes a booking.
-      </figcaption>
-    </figure>
   );
 }

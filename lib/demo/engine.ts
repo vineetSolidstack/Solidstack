@@ -10,15 +10,18 @@ import type {
   DemoState,
   OutboxMessage,
   Service,
+  Staff,
   TimeOff,
 } from "./data";
 
 export type Slot = { day: string; min: number; label: string };
+type StaffPick = { staffId?: string };
 export type Convo = {
   step: "idle" | "service" | "slot" | "name" | "message";
   service?: Service;
   slots?: Slot[];
   slot?: Slot;
+  staffId?: string;
 };
 export type Turn = {
   text: string;
@@ -117,16 +120,41 @@ export function greeting(config: Config, now: Date): Turn {
   };
 }
 
+const overlaps = (b: Booking, day: string, m: number, minutes: number) =>
+  b.day === day && m < b.min + b.minutes && b.min < m + minutes;
+
+/** Team members who do this service and work that weekday (optionally one named person). */
+export function eligibleStaff(config: Config, service: Service, d: Date, staffId?: string): Staff[] {
+  return config.staff.filter(
+    (p) =>
+      (!staffId || p.id === staffId) &&
+      (p.services.length === 0 || p.services.includes(service.id)) &&
+      !p.daysOff.includes(d.getDay()),
+  );
+}
+
+/** The first team member free for this slot, or null. */
+export function freeStaff(config: Config, bookings: Booking[], service: Service, d: Date, m: number, staffId?: string) {
+  const day = ymd(d);
+  return (
+    eligibleStaff(config, service, d, staffId).find(
+      (p) => !bookings.some((b) => (b.staffId === p.id || !b.staffId) && overlaps(b, day, m, service.minutes)),
+    ) ?? null
+  );
+}
+
 /** Every free start time (minutes after midnight) for a service on one day. */
-export function daySlots(config: Config, bookings: Booking[], service: Service, d: Date, now: Date): number[] {
+export function daySlots(config: Config, bookings: Booking[], service: Service, d: Date, now: Date, staffId?: string): number[] {
   const h = hoursOn(config, d);
   const day = ymd(d);
   if (!h || day < ymd(now)) return [];
   const free: number[] = [];
   for (let m = h.open; m + service.minutes <= h.close; m += 30) {
     if (day === ymd(now) && m < nowMin(now) + 30) continue;
-    const taken = bookings.some((b) => b.day === day && m < b.min + b.minutes && b.min < m + service.minutes);
-    if (!taken) free.push(m);
+    const ok = config.staff.length
+      ? freeStaff(config, bookings, service, d, m, staffId) !== null
+      : !bookings.some((b) => overlaps(b, day, m, service.minutes));
+    if (ok) free.push(m);
   }
   return free;
 }
@@ -146,7 +174,7 @@ export function findSlots(
   service: Service,
   from: Date,
   now: Date,
-  opts: { count?: number; onlyThatDay?: boolean } = {},
+  opts: { count?: number; onlyThatDay?: boolean } & StaffPick = {},
 ): Slot[] {
   const count = opts.count ?? 3;
   const out: Slot[] = [];
@@ -156,7 +184,7 @@ export function findSlots(
     const h = hoursOn(config, d);
     const day = ymd(d);
     if (h) {
-      const free = daySlots(config, bookings, service, d, now);
+      const free = daySlots(config, bookings, service, d, now, opts.staffId);
       const picks = free.length > 2 ? [free[0], free[Math.floor(free.length / 2)]] : free;
       for (const m of picks) {
         if (out.length < count) out.push({ day, min: m, label: slotLabel(d, m, now) });
@@ -184,13 +212,26 @@ function parseDay(text: string, now: Date): Date | null {
   return null;
 }
 
+const GENERIC = new Set(["full", "and", "the", "for", "new", "patient", "visit", "service", "change", "replacement", "exam"]);
+const norm = (x: string) => x.toLowerCase().replace(/colour/g, "color").replace(/tyre/g, "tire").replace(/-/g, "");
+
+/** The service a caller means: full name first, otherwise the one sharing the most distinctive words. */
 const findService = (config: Config, text: string) => {
-  const t = text.toLowerCase();
-  return config.services.find((s) => {
-    const name = s.name.toLowerCase();
-    return t.includes(name) || name.split(/\s+/).some((w) => w.length > 3 && t.includes(w));
-  });
+  const t = norm(text);
+  const exact = config.services.find((s) => t.includes(norm(s.name)));
+  if (exact) return exact;
+  let best: { s: Service; score: number } | undefined;
+  for (const s of config.services) {
+    const score = norm(s.name)
+      .split(/[^a-z]+/)
+      .filter((w) => w.length >= 3 && !GENERIC.has(w) && t.includes(w)).length;
+    if (score > (best?.score ?? 0)) best = { s, score };
+  }
+  return best?.s;
 };
+
+/** "a haircut", "an oil change". */
+const aAn = (name: string) => `${/^[aeiou]/i.test(name) ? "an" : "a"} ${name.toLowerCase()}`;
 
 const priceLine = (s: Service) => `${s.name} is $${s.price} and takes about ${s.minutes} minutes`;
 
@@ -202,25 +243,32 @@ function closedReason(config: Config, d: Date, now: Date) {
   return null;
 }
 
-function offerSlots(state: DemoState, service: Service, now: Date, day: Date | null, after?: Date): Turn {
+function offerSlots(state: DemoState, service: Service, now: Date, day: Date | null, after?: Date, wantStaff?: string): Turn {
   const { config, bookings } = state;
   let lead = "";
+  let staffId = wantStaff;
+  const person = config.staff.find((p) => p.id === staffId);
+  if (person && person.services.length && !person.services.includes(service.id)) {
+    lead = `${person.name} doesn't do ${service.name.toLowerCase()}, so I've looked at the rest of the team. `;
+    staffId = undefined;
+  }
+  const withWho = person && staffId ? ` with ${person.name}` : "";
   let slots: Slot[] = [];
 
   if (day) {
     const reason = closedReason(config, day, now);
     if (reason) {
-      lead = `${reason} `;
+      lead += `${reason} `;
     } else {
-      slots = findSlots(config, bookings, service, day, now, { onlyThatDay: true });
-      if (!slots.length) lead = `We're fully booked ${fmtDay(day, now)}. `;
+      slots = findSlots(config, bookings, service, day, now, { onlyThatDay: true, staffId });
+      if (!slots.length) lead += withWho ? `${person!.name} has nothing free ${fmtDay(day, now)}. ` : `There's nothing free for that ${fmtDay(day, now)}. `;
     }
   } else if (!after) {
     const off = timeOffOn(config, ymd(now));
-    if (off) lead = `${awayText(config, off)}, but I can book you in for when we're back. `;
+    if (off) lead += `${awayText(config, off)}, but I can book you in for when we're back. `;
   }
 
-  if (!slots.length) slots = findSlots(config, bookings, service, after ?? day ?? now, now);
+  if (!slots.length) slots = findSlots(config, bookings, service, after ?? day ?? now, now, { staffId });
 
   if (!slots.length) {
     return {
@@ -231,10 +279,11 @@ function offerSlots(state: DemoState, service: Service, now: Date, day: Date | n
 
   const labels = slots.map((s) => spoken(s.label));
   const list = labels.length > 1 ? `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}` : labels[0];
-  const intro = lead ? `${lead}The closest openings for a ${service.name.toLowerCase()} are` : `For a ${service.name.toLowerCase()} I have`;
+  const what = `${aAn(service.name)}${withWho}`;
+  const intro = lead ? `${lead}The closest openings for ${what} are` : `For ${what} I have`;
   return {
     text: `${intro} ${list}. Which works best?`,
-    convo: { step: "slot", service, slots },
+    convo: { step: "slot", service, slots, staffId },
     chips: [...slots.map((s) => s.label), "Another day"],
   };
 }
@@ -268,8 +317,18 @@ export function makeMessage(
 }
 
 /** Creates the booking plus the texts it triggers. Shared by phone and online booking. */
-export function makeBooking(config: Config, service: Service, slot: Slot, name: string, now: Date, via: string) {
-  const when = spoken(slot.label);
+export function makeBooking(
+  config: Config,
+  bookings: Booking[],
+  service: Service,
+  slot: Slot,
+  name: string,
+  now: Date,
+  via: string,
+  extra: StaffPick & { note?: string } = {},
+) {
+  const who = config.staff.length ? freeStaff(config, bookings, service, fromYmd(slot.day), slot.min, extra.staffId) : null;
+  const when = `${spoken(slot.label)}${who ? ` with ${who.name}` : ""}`;
   const booking: Booking = {
     id: newId(now),
     serviceName: service.name,
@@ -277,13 +336,16 @@ export function makeBooking(config: Config, service: Service, slot: Slot, name: 
     day: slot.day,
     min: slot.min,
     name,
+    staffId: who?.id,
+    staffName: who?.name,
+    note: extra.note || undefined,
   };
   const a = config.automations;
   const outbox = [
     makeMessage(now, name, "Booking confirmation", `You're booked at ${config.name}: ${service.name}, ${when}. ${config.address}.`),
-    makeMessage(now, config.owner, "New booking alert", `${name} booked a ${service.name.toLowerCase()} ${when} through ${via}.`),
+    makeMessage(now, config.owner, "New booking alert", `${name} booked ${aAn(service.name)} ${when} through ${via}.${extra.note ? ` Note: ${extra.note}` : ""}`),
     ...(a.reminders
-      ? [makeMessage(now, name, "Reminder, 24 hours before", automationText("reminders", config, `a ${service.name.toLowerCase()} ${when}`), "scheduled")]
+      ? [makeMessage(now, name, "Reminder, 24 hours before", automationText("reminders", config, `${aAn(service.name)} ${when}`), "scheduled")]
       : []),
     ...(a.reviewRequest
       ? [makeMessage(now, name, "Review request, after the visit", automationText("reviewRequest", config), "scheduled")]
@@ -297,16 +359,14 @@ function confirmBooking(state: DemoState, convo: Convo, name: string, now: Date)
   const { service, slot } = convo;
   if (!service || !slot) return { text: "Sorry, let's start over. What can I book for you?", convo: IDLE };
 
-  const stillFree = !state.bookings.some(
-    (b) => b.day === slot.day && slot.min < b.min + b.minutes && b.min < slot.min + service.minutes,
-  );
+  const stillFree = daySlots(config, state.bookings, service, fromYmd(slot.day), now, convo.staffId).includes(slot.min);
   if (!stillFree) {
-    const next = offerSlots(state, service, now, null);
+    const next = offerSlots(state, service, now, null, undefined, convo.staffId);
     return { ...next, text: `Sorry, that time was just taken. ${next.text}` };
   }
 
-  const { booking, outbox } = makeBooking(config, service, slot, name, now, "the AI receptionist");
-  const when = spoken(slot.label);
+  const { booking, outbox } = makeBooking(config, state.bookings, service, slot, name, now, "the AI receptionist", { staffId: convo.staffId });
+  const when = `${spoken(slot.label)}${booking.staffName ? ` with ${booking.staffName}` : ""}`;
   const a = config.automations;
   return {
     text: `You're all set, ${name}. ${service.name}, ${when}. I'll text you a confirmation${a.reminders ? " and a reminder the day before" : ""}. Anything else?`,
@@ -381,6 +441,13 @@ export function reply(state: DemoState, convo: Convo, input: string, now: Date):
   const text = input.trim();
   const t = text.toLowerCase();
   const day = parseDay(t, now);
+  // People are matched on the last word of their name, so "Dr. Patel" is found by "patel".
+  const sid =
+    config.staff.find((p) => {
+      const last = p.name.toLowerCase().split(/\s+/).pop()?.replace(/[^a-z]/g, "");
+      return last && new RegExp(`\\b${last}\\b`).test(t);
+    })?.id ?? convo.staffId;
+  const ownerIsStaff = config.staff.some((p) => p.name === config.owner);
 
   if (convo.step === "name") {
     const name = text.replace(/^(it'?s|my name is|i'?m|this is|under)\s+/i, "").replace(/[.!]+$/, "").slice(0, 60);
@@ -402,26 +469,28 @@ export function reply(state: DemoState, convo: Convo, input: string, now: Date):
     if (slot) {
       return {
         text: `Great, ${spoken(slot.label)} it is. What name should I put the booking under?`,
-        convo: { step: "name", service: convo.service, slot },
+        convo: { step: "name", service: convo.service, slot, staffId: convo.staffId },
       };
     }
-    if (day) return offerSlots(state, convo.service, now, day);
+    const other = findService(config, t);
+    if (other && other.id !== convo.service.id) return offerSlots(state, other, now, day, undefined, sid);
+    if (day || sid !== convo.staffId) return offerSlots(state, convo.service, now, day, undefined, sid);
     if (/another|other|none|later|different|no\b|else/.test(t)) {
       const last = convo.slots[convo.slots.length - 1];
-      return offerSlots(state, convo.service, now, null, addDays(fromYmd(last.day), 1));
+      return offerSlots(state, convo.service, now, null, addDays(fromYmd(last.day), 1), sid);
     }
   }
 
   if (convo.step === "service") {
     const service = findService(config, t);
-    if (service) return offerSlots(state, service, now, day);
+    if (service) return offerSlots(state, service, now, day, undefined, sid);
   }
 
   if (/\b(bye|goodbye|that'?s all|no thanks|nothing else)\b/.test(t)) {
     return { text: `Thanks for calling ${config.name}. Have a great day!`, convo: IDLE };
   }
 
-  if (/(speak|talk).*(someone|person|human|owner|manager|staff)|real person|leave a message|call me back|callback/.test(t) || t.includes(config.owner.toLowerCase())) {
+  if (/\b(speak|talk)\b|real person|human|leave a message|call me back|callback/.test(t) || (!ownerIsStaff && t.includes(config.owner.toLowerCase()))) {
     const off = timeOffOn(config, ymd(now));
     return {
       text: `${off ? awayText(config, off) : `${config.owner} can't come to the phone right now`}. Tell me your name, number and what you need, and I'll pass it on.`,
@@ -432,11 +501,11 @@ export function reply(state: DemoState, convo: Convo, input: string, now: Date):
   const service = findService(config, t);
 
   if (/book|appointment|schedul|availab|opening|slot|come in|reserve|get in|fit me/.test(t)) {
-    if (service) return offerSlots(state, service, now, day);
-    if (config.services.length === 1) return offerSlots(state, config.services[0], now, day);
+    if (service) return offerSlots(state, service, now, day, undefined, sid);
+    if (config.services.length === 1) return offerSlots(state, config.services[0], now, day, undefined, sid);
     return {
       text: "Happy to book you in. What would you like to come in for?",
-      convo: { step: "service" },
+      convo: { step: "service", staffId: sid },
       chips: config.services.map((s) => s.name),
     };
   }
@@ -465,10 +534,18 @@ export function reply(state: DemoState, convo: Convo, input: string, now: Date):
     return { text: `We're at ${config.address}.`, convo: IDLE, chips: ["Book an appointment"] };
   }
 
+  if (config.staff.length && /stylist|team|who (works|cuts|does)|staff/.test(t)) {
+    return {
+      text: `Our team: ${config.staff.map((p) => `${p.name}, ${p.role.toLowerCase()}`).join("; ")}. You can ask for anyone by name when you book.`,
+      convo: IDLE,
+      chips: ["Book an appointment"],
+    };
+  }
+
   const faq = matchFaq(config, t);
   if (faq) return { text: faq, convo: IDLE, chips: ["Book an appointment"] };
 
-  if (service) return offerSlots(state, service, now, day);
+  if (service) return offerSlots(state, service, now, day, undefined, sid);
 
   if (/service|offer|do you do|menu|what do you/.test(t)) {
     return {

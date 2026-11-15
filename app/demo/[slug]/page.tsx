@@ -3,8 +3,9 @@ import path from "node:path";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DemoSite } from "@/components/demo/demo-site";
-import { SalonSite } from "@/components/demo/salon-site";
+import { AutoSite } from "@/components/demo/sites/auto";
+import { DentalSite } from "@/components/demo/sites/dental";
+import { SalonSite } from "@/components/demo/sites/salon";
 import { getTemplate, templates } from "@/lib/demo/data";
 
 export const generateStaticParams = () => templates.map((t) => ({ slug: t.slug }));
@@ -41,6 +42,8 @@ export default function DemoPage({ params }: PageProps<"/demo/[slug]">) {
 async function Demo({ params }: Pick<PageProps<"/demo/[slug]">, "params">) {
   const { slug } = await params;
   if (!getTemplate(slug)) notFound();
-  if (slug === "salon") return <SalonSite slug={slug} images={demoImages(slug)} />;
-  return <DemoSite slug={slug} />;
+  const images = demoImages(slug);
+  if (slug === "auto") return <AutoSite slug={slug} images={images} />;
+  if (slug === "dental") return <DentalSite slug={slug} images={images} />;
+  return <SalonSite slug={slug} images={images} />;
 }
