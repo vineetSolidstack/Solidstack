@@ -117,6 +117,28 @@ export function greeting(config: Config, now: Date): Turn {
   };
 }
 
+/** Every free start time (minutes after midnight) for a service on one day. */
+export function daySlots(config: Config, bookings: Booking[], service: Service, d: Date, now: Date): number[] {
+  const h = hoursOn(config, d);
+  const day = ymd(d);
+  if (!h || day < ymd(now)) return [];
+  const free: number[] = [];
+  for (let m = h.open; m + service.minutes <= h.close; m += 30) {
+    if (day === ymd(now) && m < nowMin(now) + 30) continue;
+    const taken = bookings.some((b) => b.day === day && m < b.min + b.minutes && b.min < m + service.minutes);
+    if (!taken) free.push(m);
+  }
+  return free;
+}
+
+/** Whether a date is a normal working day, a regular closed day, or time off. */
+export function dayState(config: Config, d: Date): "open" | "closed" | "away" {
+  if (timeOffOn(config, ymd(d))) return "away";
+  return hoursOn(config, d) ? "open" : "closed";
+}
+
+export const slotLabel = (d: Date, min: number, now: Date) => `${cap(fmtDay(d, now))} at ${fmtTime(min)}`;
+
 /** Free slots for a service, at most two per day so suggestions are spread out. */
 export function findSlots(
   config: Config,
@@ -134,17 +156,10 @@ export function findSlots(
     const h = hoursOn(config, d);
     const day = ymd(d);
     if (h) {
-      const free: number[] = [];
-      for (let m = h.open; m + service.minutes <= h.close; m += 30) {
-        if (day === ymd(now) && m < nowMin(now) + 30) continue;
-        const taken = bookings.some(
-          (b) => b.day === day && m < b.min + b.minutes && b.min < m + service.minutes,
-        );
-        if (!taken) free.push(m);
-      }
+      const free = daySlots(config, bookings, service, d, now);
       const picks = free.length > 2 ? [free[0], free[Math.floor(free.length / 2)]] : free;
       for (const m of picks) {
-        if (out.length < count) out.push({ day, min: m, label: `${cap(fmtDay(d, now))} at ${fmtTime(m)}` });
+        if (out.length < count) out.push({ day, min: m, label: slotLabel(d, m, now) });
       }
     }
     if (opts.onlyThatDay) break;
@@ -252,6 +267,31 @@ export function makeMessage(
   return { id: newId(now), at: now.getTime(), to, label, text, status };
 }
 
+/** Creates the booking plus the texts it triggers. Shared by phone and online booking. */
+export function makeBooking(config: Config, service: Service, slot: Slot, name: string, now: Date, via: string) {
+  const when = spoken(slot.label);
+  const booking: Booking = {
+    id: newId(now),
+    serviceName: service.name,
+    minutes: service.minutes,
+    day: slot.day,
+    min: slot.min,
+    name,
+  };
+  const a = config.automations;
+  const outbox = [
+    makeMessage(now, name, "Booking confirmation", `You're booked at ${config.name}: ${service.name}, ${when}. ${config.address}.`),
+    makeMessage(now, config.owner, "New booking alert", `${name} booked a ${service.name.toLowerCase()} ${when} through ${via}.`),
+    ...(a.reminders
+      ? [makeMessage(now, name, "Reminder, 24 hours before", automationText("reminders", config, `a ${service.name.toLowerCase()} ${when}`), "scheduled")]
+      : []),
+    ...(a.reviewRequest
+      ? [makeMessage(now, name, "Review request, after the visit", automationText("reviewRequest", config), "scheduled")]
+      : []),
+  ];
+  return { booking, outbox };
+}
+
 function confirmBooking(state: DemoState, convo: Convo, name: string, now: Date): Turn {
   const { config } = state;
   const { service, slot } = convo;
@@ -265,26 +305,9 @@ function confirmBooking(state: DemoState, convo: Convo, name: string, now: Date)
     return { ...next, text: `Sorry, that time was just taken. ${next.text}` };
   }
 
+  const { booking, outbox } = makeBooking(config, service, slot, name, now, "the AI receptionist");
   const when = spoken(slot.label);
-  const booking: Booking = {
-    id: newId(now),
-    serviceName: service.name,
-    minutes: service.minutes,
-    day: slot.day,
-    min: slot.min,
-    name,
-  };
   const a = config.automations;
-  const outbox = [
-    makeMessage(now, name, "Booking confirmation", `You're booked at ${config.name}: ${service.name}, ${when}. ${config.address}.`),
-    makeMessage(now, config.owner, "New booking alert", `${name} booked a ${service.name.toLowerCase()} ${when} through the AI receptionist.`),
-    ...(a.reminders
-      ? [makeMessage(now, name, "Reminder, 24 hours before", automationText("reminders", config, `a ${service.name.toLowerCase()} ${when}`), "scheduled")]
-      : []),
-    ...(a.reviewRequest
-      ? [makeMessage(now, name, "Review request, after the visit", automationText("reviewRequest", config), "scheduled")]
-      : []),
-  ];
   return {
     text: `You're all set, ${name}. ${service.name}, ${when}. I'll text you a confirmation${a.reminders ? " and a reminder the day before" : ""}. Anything else?`,
     convo: IDLE,

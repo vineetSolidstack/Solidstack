@@ -56,13 +56,16 @@ body {
   overflow-x: hidden;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  letter-spacing: -0.035em;
-  font-weight: 600;
-  line-height: 1.05;
+/* In the base layer so Tailwind utilities (tracking-*, font-*) can override it. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.035em;
+    font-weight: 600;
+    line-height: 1.05;
+  }
 }
 
 ::selection {

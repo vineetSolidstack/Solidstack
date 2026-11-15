@@ -1,4 +1,4 @@
-export type Service = { id: string; name: string; minutes: number; price: number };
+export type Service = { id: string; name: string; minutes: number; price: number; note?: string };
 export type DayHours = { open: string; close: string } | null;
 export type TimeOff = { id: string; from: string; to: string; reason: string };
 export type Faq = { id: string; q: string; a: string };
@@ -91,7 +91,7 @@ export const templates: Template[] = [
     slug: "salon",
     kind: "Hair salon",
     tagline: "Hair studio",
-    headline: "Good hair, without the phone tag.",
+    headline: "Hair that feels like you.",
     intro: "Cuts, colour and styling by appointment. Call any time, day or night, and our assistant will find you a spot.",
     theme: {
       bg: "#f6f1ea",
@@ -101,7 +101,7 @@ export const templates: Template[] = [
       line: "#2a211c22",
       accent: "#8a4b33",
       accentFg: "#ffffff",
-      heading: "font-serif font-normal tracking-[-0.01em]",
+      heading: "font-serif font-normal tracking-normal",
       radius: "999px",
       layout: "center",
     },
@@ -112,9 +112,12 @@ export const templates: Template[] = [
       hours: week("09:00", "18:00", { open: "09:00", close: "15:00" }),
       timeOff: [],
       services: [
-        { id: "cut", name: "Haircut", minutes: 45, price: 55 },
-        { id: "color", name: "Colour", minutes: 120, price: 140 },
-        { id: "blowout", name: "Blowout", minutes: 30, price: 40 },
+        { id: "cut", name: "Cut & style", minutes: 45, price: 65, note: "wash, cut and blow-dry" },
+        { id: "color", name: "Full colour", minutes: 120, price: 140, note: "single shade, roots to ends" },
+        { id: "balayage", name: "Balayage", minutes: 180, price: 220, note: "hand-painted highlights" },
+        { id: "gloss", name: "Gloss & treatment", minutes: 60, price: 75, note: "shine and repair" },
+        { id: "blowout", name: "Blowout", minutes: 30, price: 40, note: "wash and style" },
+        { id: "updo", name: "Occasion styling", minutes: 60, price: 90, note: "weddings and events" },
       ],
       faqs: [
         { id: "f1", q: "Do you take walk-ins?", a: "We work by appointment, but I can usually find you a spot within a day or two." },
